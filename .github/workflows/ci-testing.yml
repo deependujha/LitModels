@@ -65,10 +65,9 @@ jobs:
 
       - name: Tests
         run: |
-          coverage run --source lit_sandbox -m pytest src tests -v
+          coverage run --source litmodels -m pytest src tests -v
 
       - name: Statistics
-        if: success()
         run: |
           coverage report
           coverage xml
