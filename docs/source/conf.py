@@ -31,7 +31,7 @@ spec.loader.exec_module(about)
 # -- Project information -----------------------------------------------------
 
 # this name shall match the project name in Github as it is used for linking to code
-project = "Lightning-Sandbox"
+project = "models"
 copyright = about.__copyright__
 author = about.__author__
 
