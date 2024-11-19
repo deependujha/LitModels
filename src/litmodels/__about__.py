@@ -4,7 +4,7 @@ __author_email__ = "community@lightning.ai"
 __license__ = "Apache-2.0"  # TODO: change if needed and update the LICENSE file
 __copyright__ = f"Copyright (c) 2020-2022, {__author__}."
 __homepage__ = "https://github.com/Lightning-AI/models"
-__docs__ = "PyTorch Lightning Sample project."
+__docs__ = "Lightning AI Model hub."
 
 __all__ = [
     "__author__",
