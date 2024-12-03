@@ -2,7 +2,8 @@ import os
 from unittest import mock
 
 import pytest
-from litmodels.cloud_io import download_model, upload_model, upload_model_files
+from litmodels import download_model, upload_model
+from litmodels.io import upload_model_files
 from torch.nn import Module
 
 
@@ -25,11 +26,11 @@ def test_wrong_model_name(name):
 def test_upload_model(mocker, tmpdir, model, model_path):
     # mocking the _get_teamspace to return another mock
     ts_mock = mock.MagicMock()
-    mocker.patch("litmodels.cloud_io._get_teamspace", return_value=ts_mock)
+    mocker.patch("litmodels.io.cloud._get_teamspace", return_value=ts_mock)
 
     # The lit-logger function is just a wrapper around the SDK function
     upload_model(
-        model,
+        model=model,
         name="org-name/teamspace/model-name",
         cluster_id="cluster_id",
         staging_dir=tmpdir,
@@ -46,7 +47,7 @@ def test_upload_model(mocker, tmpdir, model, model_path):
 def test_download_model(mocker):
     # mocking the _get_teamspace to return another mock
     ts_mock = mock.MagicMock()
-    mocker.patch("litmodels.cloud_io._get_teamspace", return_value=ts_mock)
+    mocker.patch("litmodels.io.cloud._get_teamspace", return_value=ts_mock)
     # The lit-logger function is just a wrapper around the SDK function
     download_model(
         name="org-name/teamspace/model-name",
