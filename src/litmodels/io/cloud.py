@@ -80,7 +80,7 @@ def upload_model_files(
     path: str,
     progress_bar: bool = True,
     cluster_id: Optional[str] = None,
-    verbose: Union[bool, int] = 0,
+    verbose: Union[bool, int] = 1,
 ) -> UploadedModelInfo:
     """Upload a local checkpoint file to the model store.
 

@@ -21,7 +21,7 @@ def upload_model(
     progress_bar: bool = True,
     cluster_id: Optional[str] = None,
     staging_dir: Optional[str] = None,
-    verbose: Union[bool, int] = 0,
+    verbose: Union[bool, int] = 1,
 ) -> UploadedModelInfo:
     """Upload a checkpoint to the model store.
 
