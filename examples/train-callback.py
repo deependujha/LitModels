@@ -15,7 +15,7 @@ class UploadModelCallback(Callback):
         best_model_path = trainer.checkpoint_callback.best_model_path
         if best_model_path:
             print(f"Uploading model: {best_model_path}")
-            upload_model(path=best_model_path, name=MY_MODEL_NAME)
+            upload_model(model=best_model_path, name=MY_MODEL_NAME)
 
 
 if __name__ == "__main__":

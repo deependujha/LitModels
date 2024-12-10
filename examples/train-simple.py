@@ -35,4 +35,4 @@ if __name__ == "__main__":
         data.DataLoader(val, batch_size=256),
     )
     print(f"last: {vars(checkpoint_callback)}")
-    upload_model(path=checkpoint_callback.last_model_path, name=MY_MODEL_NAME)
+    upload_model(model=checkpoint_callback.last_model_path, name=MY_MODEL_NAME)
