@@ -1,7 +1,7 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from lightning_utilities import module_available
 
@@ -21,7 +21,7 @@ def upload_model(
     name: str,
     model: Union[str, Path, "Module"],
     progress_bar: bool = True,
-    cluster_id: Optional[str] = None,
+    cloud_account: Optional[str] = None,
     staging_dir: Optional[str] = None,
     verbose: Union[bool, int] = 1,
 ) -> "UploadedModelInfo":
@@ -32,7 +32,7 @@ def upload_model(
             where entity is either your username or the name of an organization you are part of.
         model: The model to upload. Can be a path to a checkpoint file, a PyTorch model, or a Lightning model.
         progress_bar: Whether to show a progress bar for the upload.
-        cluster_id: The name of the cluster to use. Only required if it can't be determined
+        cloud_account: The name of the cloud account to store the Model in. Only required if it can't be determined
             automatically.
         staging_dir: A directory where the model can be saved temporarily. If not provided, a temporary directory will
             be created and used.
@@ -57,7 +57,7 @@ def upload_model(
         path=path,
         name=name,
         progress_bar=progress_bar,
-        cluster_id=cluster_id,
+        cloud_account=cloud_account,
         verbose=verbose,
     )
 
@@ -66,7 +66,7 @@ def download_model(
     name: str,
     download_dir: str = ".",
     progress_bar: bool = True,
-) -> str:
+) -> Union[str, List[str]]:
     """Download a checkpoint from the model store.
 
     Args:
