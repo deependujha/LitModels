@@ -9,10 +9,8 @@ This package provides utilities for saving and loading machine learning models u
 - **Checkpoint Management**: Manage multiple checkpoints with ease.
 - **Cloud Integration**: Support for saving and loading models from cloud storage services.
 
-[![lightning](https://img.shields.io/badge/-Lightning_2.0+-792ee5?logo=pytorchlightning&logoColor=white)](https://lightning.ai/)
 [![CI testing](https://github.com/Lightning-AI/models/actions/workflows/ci-testing.yml/badge.svg?event=push)](https://github.com/Lightning-AI/models/actions/workflows/ci-testing.yml)
 [![General checks](https://github.com/Lightning-AI/models/actions/workflows/ci-checks.yml/badge.svg?event=push)](https://github.com/Lightning-AI/models/actions/workflows/ci-checks.yml)
-[![Documentation Status](https://readthedocs.org/projects/models/badge/?version=latest)](https://models.readthedocs.io/en/latest/?badge=latest)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Lightning-AI/models/main.svg?badge_token=mqheL1-cTn-280Vx4cJUdg)](https://results.pre-commit.ci/latest/github/Lightning-AI/models/main?badge_token=mqheL1-cTn-280Vx4cJUdg)
 
 ## Installation
@@ -20,7 +18,7 @@ This package provides utilities for saving and loading machine learning models u
 To install the package, you can use `pip` from [Test PyPI](https://test.pypi.org/project/litmodels/):
 
 ```bash
-pip install -i https://test.pypi.org/simple/ litmodels
+pip install -U --pre litmodels
 ```
 
 Or installing from source:
@@ -40,8 +38,7 @@ from litmodels import upload_model
 from litmodels.demos import BoringModel
 
 # Define the model name - this should be unique to your model
-# The format is <organization>/<teamspace>/<model-name>
-MY_MODEL_NAME = "jirka/kaggle/lit-boring-model"
+MY_MODEL_NAME = "<organization>/<teamspace>/<model-name>"
 
 
 class LitModel(BoringModel):
@@ -70,8 +67,7 @@ from litmodels import download_model
 from litmodels.demos import BoringModel
 
 # Define the model name - this should be unique to your model
-# The format is <organization>/<teamspace>/<model-name>:<model-version>
-MY_MODEL_NAME = "jirka/kaggle/lit-boring-model:latest"
+MY_MODEL_NAME = "<organization>/<teamspace>/<model-name>:<model-version>"
 
 
 class LitModel(BoringModel):
@@ -103,8 +99,7 @@ from litmodels import upload_model
 from litmodels.demos import BoringModel
 
 # Define the model name - this should be unique to your model
-# The format is <organization>/<teamspace>/<model-name>
-MY_MODEL_NAME = "jirka/kaggle/lit-auto-encoder-callback"
+MY_MODEL_NAME = "<organization>/<teamspace>/<model-name>"
 
 
 class LitModel(BoringModel):
