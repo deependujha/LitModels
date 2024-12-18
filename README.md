@@ -15,7 +15,7 @@ This package provides utilities for saving and loading machine learning models u
 
 ## Installation
 
-To install the package, you can use `pip` from [Test PyPI](https://test.pypi.org/project/litmodels/):
+To install the package, you can use `pip`:
 
 ```bash
 pip install -U --pre litmodels
