@@ -1,8 +1,8 @@
-__version__ = "0.0.8rc"
+__version__ = "0.0.9rc"
 __author__ = "Lightning-AI et al."
 __author_email__ = "community@lightning.ai"
-__license__ = "Apache-2.0"  # TODO: change if needed and update the LICENSE file
-__copyright__ = f"Copyright (c) 2020-2022, {__author__}."
+__license__ = "Apache-2.0"
+__copyright__ = f"Copyright (c) 2024-2024, {__author__}."
 __homepage__ = "https://github.com/Lightning-AI/models"
 __docs__ = "Lightning AI Model hub."
 
