@@ -18,7 +18,7 @@ This package provides utilities for saving and loading machine learning models u
 To install the package, you can use `pip`:
 
 ```bash
-pip install -U --pre litmodels
+pip install -U litmodels
 ```
 
 Or installing from source:
