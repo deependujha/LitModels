@@ -27,7 +27,7 @@ def test_wrong_model_name(name):
     ],
 )
 @mock.patch("litmodels.io.cloud.sdk_upload_model")
-def test_upload_model(mock_upload_model, tmpdir, model, model_path, verbose):
+def test_upload_model(mock_upload_model, tmp_path, model, model_path, verbose):
     mock_upload_model.return_value.name = "org-name/teamspace/model-name"
 
     # The lit-logger function is just a wrapper around the SDK function
@@ -35,10 +35,10 @@ def test_upload_model(mock_upload_model, tmpdir, model, model_path, verbose):
         model=model,
         name="org-name/teamspace/model-name",
         cloud_account="cluster_id",
-        staging_dir=tmpdir,
+        staging_dir=str(tmp_path),
         verbose=verbose,
     )
-    expected_path = model_path % str(tmpdir) if "%" in model_path else model_path
+    expected_path = model_path % str(tmp_path) if "%" in model_path else model_path
     mock_upload_model.assert_called_once_with(
         path=expected_path,
         name="org-name/teamspace/model-name",
