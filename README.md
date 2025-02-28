@@ -43,7 +43,6 @@ Train your model using your preferred framework (our fist examples show `scikit-
 ### Train scikit-learn model and save it
 
 ```python
-import joblib
 from sklearn import datasets, model_selection, svm
 from litmodels import upload_model
 
@@ -70,8 +69,6 @@ upload_model(model=model, name=MY_MODEL_NAME)
 ### Download and Load the Model for inference
 
 ```python
-import os
-import joblib
 from litmodels import load_model
 
 # Unique model identifier: <organization>/<teamspace>/<model-name>
