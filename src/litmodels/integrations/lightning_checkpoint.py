@@ -1,5 +1,7 @@
 from typing import Any
 
+from lightning_sdk.lightning_cloud.login import Auth
+
 from litmodels import upload_model
 from litmodels.integrations.imports import _LIGHTNING_AVAILABLE, _PYTORCHLIGHTNING_AVAILABLE
 
@@ -27,6 +29,13 @@ class LitModelCheckpoint(ModelCheckpoint):
         """Initialize the LitModelCheckpoint."""
         super().__init__(*args, **kwargs)
         self.model_name = model_name
+
+        try:
+            # authenticate before anything else starts
+            auth = Auth()
+            auth.authenticate()
+        except Exception:
+            raise ConnectionError("Unable to authenticate with Lightning Cloud. Check your credentials.")
 
     def _save_checkpoint(self, trainer: Trainer, filepath: str) -> None:
         super()._save_checkpoint(trainer, filepath)
