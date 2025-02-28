@@ -7,8 +7,8 @@ on:
     types: ["synchronize", "reopened", "opened"]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   triage-conflicts:
