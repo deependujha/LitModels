@@ -3,12 +3,27 @@ from contextlib import redirect_stdout
 from io import StringIO
 
 import pytest
+from lightning_sdk import Teamspace
 from lightning_sdk.lightning_cloud.rest_client import GridRestClient
 from lightning_sdk.utils.resolve import _resolve_teamspace
 from litmodels import download_model, upload_model
 
+from tests.integrations import _SKIP_IF_LIGHTNING_BELLOW_2_5_1, _SKIP_IF_PYTORCHLIGHTNING_BELLOW_2_5_1
+
 LIT_ORG = "lightning-ai"
 LIT_TEAMSPACE = "LitModels"
+
+
+def _cleanup_model(teamspace: Teamspace, model_name: str) -> None:
+    """Cleanup model from the teamspace."""
+    client = GridRestClient()
+    # cleaning created models as each test run shall have unique model name
+    model = client.models_store_get_model_by_name(
+        project_owner_name=teamspace.owner.name,
+        project_name=teamspace.name,
+        model_name=model_name,
+    )
+    client.models_store_delete_model(project_id=teamspace.id, model_id=model.id)
 
 
 @pytest.mark.cloud()
@@ -41,11 +56,38 @@ def test_upload_download_model(tmp_path):
     for file in model_files:
         assert os.path.isfile(os.path.join(tmp_path, file))
 
-    client = GridRestClient()
-    # cleaning created models with todo: also consider how to delete just this version of the model
-    model = client.models_store_get_model_by_name(
-        project_owner_name=teamspace.owner.name,
-        project_name=teamspace.name,
-        model_name=model_name,
+    # CLEANING
+    _cleanup_model(teamspace, model_name)
+
+
+@pytest.mark.parametrize(
+    "importing",
+    [
+        pytest.param("lightning", marks=_SKIP_IF_LIGHTNING_BELLOW_2_5_1),
+        pytest.param("pytorch_lightning", marks=_SKIP_IF_PYTORCHLIGHTNING_BELLOW_2_5_1),
+    ],
+)
+@pytest.mark.cloud()
+# todo: mock env variables as it would run in studio
+def test_lightning_default_checkpointing(importing, tmp_path):
+    if importing == "lightning":
+        from lightning import Trainer
+        from lightning.pytorch.demos.boring_classes import BoringModel
+    elif importing == "pytorch_lightning":
+        from pytorch_lightning import Trainer
+        from pytorch_lightning.demos.boring_classes import BoringModel
+
+    # model name with random hash
+    model_name = f"litmodels_test_integrations+{os.urandom(8).hex()}"
+    teamspace = _resolve_teamspace(org=LIT_ORG, teamspace=LIT_TEAMSPACE, user=None)
+    org_team = f"{teamspace.owner.name}/{teamspace.name}"
+
+    trainer = Trainer(
+        max_epochs=2,
+        default_root_dir=tmp_path,
+        model_registry=f"{org_team}/{model_name}",
     )
-    client.models_store_delete_model(project_id=teamspace.id, model_id=model.id)
+    trainer.fit(BoringModel())
+
+    # CLEANING
+    _cleanup_model(teamspace, model_name)
