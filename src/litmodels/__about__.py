@@ -1,8 +1,8 @@
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__ = "Lightning-AI et al."
 __author_email__ = "community@lightning.ai"
 __license__ = "Apache-2.0"
-__copyright__ = f"Copyright (c) 2024-2024, {__author__}."
+__copyright__ = f"Copyright (c) 2024-2025, {__author__}."
 __homepage__ = "https://github.com/Lightning-AI/models"
 __docs__ = "Lightning AI Model hub."
 
