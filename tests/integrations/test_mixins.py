@@ -18,7 +18,7 @@ class DummyModel(PickleRegistryMixin):
 def test_pickle_push_and_pull(mock_download_model, mock_upload_model, tmp_path):
     # Create an instance of DummyModel and call push_to_registry.
     dummy = DummyModel(42)
-    dummy.push_to_registry(model_version="v1", temp_folder=str(tmp_path))
+    dummy.push_to_registry(version="v1", temp_folder=str(tmp_path))
     # The expected registry name is "dummy_model:v1" and the file should be placed in the temp folder.
     expected_path = tmp_path / "DummyModel.pkl"
     mock_upload_model.assert_called_once_with(name="DummyModel:v1", model=expected_path)
@@ -26,9 +26,7 @@ def test_pickle_push_and_pull(mock_download_model, mock_upload_model, tmp_path):
     # Set the mock to return the full path to the pickle file.
     mock_download_model.return_value = ["DummyModel.pkl"]
     # Call pull_from_registry and load the DummyModel instance.
-    loaded_dummy = DummyModel.pull_from_registry(
-        model_name="dummy_model", model_version="v1", temp_folder=str(tmp_path)
-    )
+    loaded_dummy = DummyModel.pull_from_registry(name="dummy_model", version="v1", temp_folder=str(tmp_path))
     # Verify that the unpickled instance has the expected value.
     assert loaded_dummy.value == 42
 
@@ -59,7 +57,7 @@ def test_pytorch_pull_updated(mock_download_model, mock_upload_model, tmp_path):
     torch.save(dummy.state_dict(), expected_path)
     # Prepare mocking for pull_from_registry.
     mock_download_model.return_value = [f"{dummy.__class__.__name__}.pth"]
-    loaded_dummy = DummyTorchModel.pull_from_registry(model_name="DummyTorchModel", temp_folder=str(tmp_path))
+    loaded_dummy = DummyTorchModel.pull_from_registry(name="DummyTorchModel", temp_folder=str(tmp_path))
     loaded_dummy.eval()
     output_after = loaded_dummy(input_tensor)
 
