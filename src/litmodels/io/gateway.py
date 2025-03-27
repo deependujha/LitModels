@@ -10,7 +10,6 @@ from litmodels.io.cloud import download_model_files, upload_model_files
 
 if module_available("torch"):
     import torch
-    from torch.nn import Module
 else:
     torch = None
 
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
 
 def upload_model(
     name: str,
-    model: Union[str, Path, "Module", Any],
+    model: Union[str, Path, "torch.nn.Module", Any],
     progress_bar: bool = True,
     cloud_account: Optional[str] = None,
     staging_dir: Optional[str] = None,
@@ -42,19 +41,17 @@ def upload_model(
     """
     if not staging_dir:
         staging_dir = tempfile.mkdtemp()
+    if isinstance(model, (str, Path)):
+        path = model
     # if LightningModule and isinstance(model, LightningModule):
     #     path = os.path.join(staging_dir, f"{model.__class__.__name__}.ckpt")
     #     model.save_checkpoint(path)
-    if torch and isinstance(model, torch.jit.ScriptModule):
+    elif torch and isinstance(model, torch.jit.ScriptModule):
         path = os.path.join(staging_dir, f"{model.__class__.__name__}.ts")
         model.save(path)
-    elif torch and isinstance(model, Module):
+    elif torch and isinstance(model, torch.nn.Module):
         path = os.path.join(staging_dir, f"{model.__class__.__name__}.pth")
         torch.save(model.state_dict(), path)
-    elif isinstance(model, str):
-        path = model
-    elif isinstance(model, Path):
-        path = str(model)
     else:
         path = os.path.join(staging_dir, f"{model.__class__.__name__}.pkl")
         joblib.dump(model, path)
@@ -70,7 +67,7 @@ def upload_model(
 
 def download_model(
     name: str,
-    download_dir: str = ".",
+    download_dir: Union[str, Path] = ".",
     progress_bar: bool = True,
 ) -> Union[str, List[str]]:
     """Download a checkpoint from the model store.
@@ -109,7 +106,7 @@ def load_model(name: str, download_dir: str = ".") -> Any:
     download_paths = [p for p in download_paths if Path(p).suffix.lower() not in {".md", ".txt", ".rst"}]
     if len(download_paths) > 1:
         raise NotImplementedError("Downloaded model with multiple files is not supported yet.")
-    model_path = Path(os.path.join(download_dir, download_paths[0]))
+    model_path = Path(download_dir) / download_paths[0]
     if model_path.suffix.lower() == ".pkl":
         return joblib.load(model_path)
     if model_path.suffix.lower() == ".ts":
