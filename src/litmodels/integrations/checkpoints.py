@@ -1,7 +1,9 @@
-from typing import TYPE_CHECKING, Any
+from abc import ABC
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Optional
 
 from lightning_sdk.lightning_cloud.login import Auth
-from lightning_utilities.core.rank_zero import rank_zero_only
+from lightning_utilities.core.rank_zero import rank_zero_only, rank_zero_warn
 
 from litmodels import upload_model
 from litmodels.integrations.imports import _LIGHTNING_AVAILABLE, _PYTORCHLIGHTNING_AVAILABLE
@@ -9,23 +11,32 @@ from litmodels.integrations.imports import _LIGHTNING_AVAILABLE, _PYTORCHLIGHTNI
 if _LIGHTNING_AVAILABLE:
     from lightning.pytorch.callbacks import ModelCheckpoint as _LightningModelCheckpoint
 
-    if TYPE_CHECKING:
-        from lightning.pytorch import Trainer
-
 
 if _PYTORCHLIGHTNING_AVAILABLE:
     from pytorch_lightning.callbacks import ModelCheckpoint as _PytorchLightningModelCheckpoint
 
-    if TYPE_CHECKING:
-        from pytorch_lightning import Trainer
+
+if TYPE_CHECKING:
+    if _LIGHTNING_AVAILABLE:
+        import lightning.pytorch as pl
+    if _PYTORCHLIGHTNING_AVAILABLE:
+        import pytorch_lightning as pl
 
 
 # Base class to be inherited
-class LitModelCheckpointMixin:
+class LitModelCheckpointMixin(ABC):
     """Mixin class for LitModel checkpoint functionality."""
 
-    def __init__(self, model_name: str, *args: Any, **kwargs: Any) -> None:
+    # mainly ofr mocking reasons
+    _datetime_stamp: str = datetime.now().strftime("%Y%m%d-%H%M")
+    model_name: Optional[str] = None
+
+    def __init__(self, model_name: Optional[str]) -> None:
         """Initialize with model name."""
+        if not model_name:
+            rank_zero_warn(
+                "The model is not defined so we will continue with LightningModule names and timestamp of now"
+            )
         self.model_name = model_name
 
         try:  # authenticate before anything else starts
@@ -38,7 +49,18 @@ class LitModelCheckpointMixin:
     def _upload_model(self, filepath: str) -> None:
         # todo: uploading on background so training does nt stops
         # todo: use filename as version but need to validate that such version does not exists yet
+        if not self.model_name:
+            raise RuntimeError(
+                "Model name is not specified neither updated by `setup` method via Trainer."
+                " Please set the model name before uploading or ensure that `setup` method is called."
+            )
         upload_model(name=self.model_name, model=filepath)
+
+    def _update_model_name(self, pl_model: "pl.LightningModule") -> None:
+        if self.model_name:
+            return
+        # setting the model name as Lightning module with some time hash
+        self.model_name = pl_model.__class__.__name__ + f"_{self._datetime_stamp}"
 
 
 # Create specific implementations
@@ -53,15 +75,20 @@ if _LIGHTNING_AVAILABLE:
             kwargs: Additional keyword arguments to pass to the parent class.
         """
 
-        def __init__(self, model_name: str, *args: Any, **kwargs: Any) -> None:
+        def __init__(self, *args: Any, model_name: Optional[str] = None, **kwargs: Any) -> None:
             """Initialize the checkpoint with model name and other parameters."""
             _LightningModelCheckpoint.__init__(self, *args, **kwargs)
             LitModelCheckpointMixin.__init__(self, model_name)
 
-        def _save_checkpoint(self, trainer: "Trainer", filepath: str) -> None:
+        def setup(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: str) -> None:
+            """Setup the checkpoint callback."""
+            super().setup(trainer, pl_module, stage)
+            self._update_model_name(pl_module)
+
+        def _save_checkpoint(self, trainer: "pl.Trainer", filepath: str) -> None:
+            """Extend the save checkpoint method to upload the model."""
             super()._save_checkpoint(trainer, filepath)
-            if trainer.is_global_zero:
-                # Only upload from the main process
+            if trainer.is_global_zero:  # Only upload from the main process
                 self._upload_model(filepath)
 
 
@@ -76,13 +103,18 @@ if _PYTORCHLIGHTNING_AVAILABLE:
             kwargs: Additional keyword arguments to pass to the parent class.
         """
 
-        def __init__(self, model_name: str, *args: Any, **kwargs: Any) -> None:
+        def __init__(self, *args: Any, model_name: Optional[str] = None, **kwargs: Any) -> None:
             """Initialize the checkpoint with model name and other parameters."""
             _PytorchLightningModelCheckpoint.__init__(self, *args, **kwargs)
             LitModelCheckpointMixin.__init__(self, model_name)
 
-        def _save_checkpoint(self, trainer: "Trainer", filepath: str) -> None:
+        def setup(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: str) -> None:
+            """Setup the checkpoint callback."""
+            super().setup(trainer, pl_module, stage)
+            self._update_model_name(pl_module)
+
+        def _save_checkpoint(self, trainer: "pl.Trainer", filepath: str) -> None:
+            """Extend the save checkpoint method to upload the model."""
             super()._save_checkpoint(trainer, filepath)
-            if trainer.is_global_zero:
-                # Only upload from the main process
+            if trainer.is_global_zero:  # Only upload from the main process
                 self._upload_model(filepath)
