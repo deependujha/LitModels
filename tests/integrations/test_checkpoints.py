@@ -104,4 +104,5 @@ def test_lightning_checkpointing_pickleable(mock_auth, importing):
         from litmodels.integrations.checkpoints import PytorchLightningModelCheckpoint as LitModelCheckpoint
 
     ckpt = LitModelCheckpoint(model_name="org-name/teamspace/model-name")
+    assert mock_auth.call_count == 1
     pickle.dumps(ckpt)
