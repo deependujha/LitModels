@@ -272,5 +272,5 @@ TODO: show the chart between not using this vs using this and the impact on trai
 
 # Community
 
-💬 [Get help on Discord](https://discord.com/invite/XncpTy7DSt)
+💬 [Get help on Discord](https://discord.com/invite/XncpTy7DSt)    
 📋 [License: Apache 2.0](https://github.com/Lightning-AI/litModels/blob/main/LICENSE)
