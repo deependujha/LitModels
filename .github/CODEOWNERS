@@ -7,3 +7,5 @@
 # CI/CD and configs
 /.github/       @borda
 *.yml           @borda
+
+/README.md                           @williamfalcon
