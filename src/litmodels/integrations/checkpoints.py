@@ -5,7 +5,8 @@ import threading
 from abc import ABC
 from datetime import datetime
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from lightning_sdk.lightning_cloud.login import Auth
 from lightning_sdk.utils.resolve import _resolve_teamspace
@@ -105,13 +106,13 @@ class ModelManager:
                 rank_zero_warn(f"Unknown task: {task}")
             self.task_queue.task_done()
 
-    def queue_upload(self, registry_name: str, filepath: str, metadata: Optional[dict] = None) -> None:
+    def queue_upload(self, registry_name: str, filepath: Union[str, Path], metadata: Optional[dict] = None) -> None:
         """Queue an upload task."""
         self.upload_count += 1
         self.task_queue.put((Action.UPLOAD, (registry_name, filepath, metadata)))
         rank_zero_debug(f"Queued upload: {filepath} (pending uploads: {self.upload_count})")
 
-    def queue_remove(self, trainer: "pl.Trainer", filepath: str) -> None:
+    def queue_remove(self, trainer: "pl.Trainer", filepath: Union[str, Path]) -> None:
         """Queue a removal task."""
         self.remove_count += 1
         self.task_queue.put((Action.REMOVE, (trainer, filepath)))
@@ -132,15 +133,21 @@ class LitModelCheckpointMixin(ABC):
     model_registry: Optional[str] = None
     _model_manager: ModelManager
 
-    def __init__(self, model_name: Optional[str]) -> None:
-        """Initialize with model name."""
-        if not model_name:
+    def __init__(self, model_registry: Optional[str], clear_all_local: bool = False) -> None:
+        """Initialize with model name.
+
+        Args:
+            model_registry: Name of the model to upload in format 'organization/teamspace/modelname'.
+            clear_all_local: Whether to clear local models after uploading to the cloud.
+        """
+        if not model_registry:
             rank_zero_warn(
                 "The model is not defined so we will continue with LightningModule names and timestamp of now"
             )
         self._datetime_stamp = datetime.now().strftime("%Y%m%d-%H%M")
         # remove any / from beginning and end of the name
-        self.model_registry = model_name.strip("/") if model_name else None
+        self.model_registry = model_registry.strip("/") if model_registry else None
+        self._clear_all_local = clear_all_local
 
         try:  # authenticate before anything else starts
             Auth().authenticate()
@@ -150,7 +157,7 @@ class LitModelCheckpointMixin(ABC):
         self._model_manager = ModelManager()
 
     @rank_zero_only
-    def _upload_model(self, filepath: str, metadata: Optional[dict] = None) -> None:
+    def _upload_model(self, trainer: "pl.Trainer", filepath: Union[str, Path], metadata: Optional[dict] = None) -> None:
         if not self.model_registry:
             raise RuntimeError(
                 "Model name is not specified neither updated by `setup` method via Trainer."
@@ -170,11 +177,16 @@ class LitModelCheckpointMixin(ABC):
         metadata.update({"litModels_integration": ckpt_class.__name__})
         # Add to queue instead of uploading directly
         get_model_manager().queue_upload(registry_name=model_registry, filepath=filepath, metadata=metadata)
+        if self._clear_all_local:
+            get_model_manager().queue_remove(trainer=trainer, filepath=filepath)
 
     @rank_zero_only
-    def _remove_model(self, trainer: "pl.Trainer", filepath: str) -> None:
+    def _remove_model(self, trainer: "pl.Trainer", filepath: Union[str, Path]) -> None:
         """Remove the local version of the model if requested."""
-        get_model_manager().queue_remove(trainer, filepath)
+        if self._clear_all_local:
+            # skip the local removal we put it in the queue right after the upload
+            return
+        get_model_manager().queue_remove(trainer=trainer, filepath=filepath)
 
     def default_model_name(self, pl_model: "pl.LightningModule") -> str:
         """Generate a default model name based on the class name and timestamp."""
@@ -221,15 +233,30 @@ if _LIGHTNING_AVAILABLE:
         """Lightning ModelCheckpoint with LitModel support.
 
         Args:
-            model_name: Name of the model to upload in format 'organization/teamspace/modelname'
-            args: Additional arguments to pass to the parent class.
-            kwargs: Additional keyword arguments to pass to the parent class.
+            model_registry: Name of the model to upload in format 'organization/teamspace/modelname'.
+            clear_all_local: Whether to clear local models after uploading to the cloud.
+            *args: Additional arguments to pass to the parent class.
+            **kwargs: Additional keyword arguments to pass to the parent class.
         """
 
-        def __init__(self, *args: Any, model_name: Optional[str] = None, **kwargs: Any) -> None:
+        def __init__(
+            self,
+            *args: Any,
+            model_name: Optional[str] = None,
+            model_registry: Optional[str] = None,
+            clear_all_local: bool = False,
+            **kwargs: Any,
+        ) -> None:
             """Initialize the checkpoint with model name and other parameters."""
             _LightningModelCheckpoint.__init__(self, *args, **kwargs)
-            LitModelCheckpointMixin.__init__(self, model_name)
+            if model_name is not None:
+                rank_zero_warn(
+                    "The 'model_name' argument is deprecated and will be removed in a future version."
+                    " Please use 'model_registry' instead."
+                )
+            LitModelCheckpointMixin.__init__(
+                self, model_registry=model_registry or model_name, clear_all_local=clear_all_local
+            )
 
         def setup(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: str) -> None:
             """Setup the checkpoint callback."""
@@ -240,7 +267,7 @@ if _LIGHTNING_AVAILABLE:
             """Extend the save checkpoint method to upload the model."""
             _LightningModelCheckpoint._save_checkpoint(self, trainer, filepath)
             if trainer.is_global_zero:  # Only upload from the main process
-                self._upload_model(filepath)
+                self._upload_model(trainer=trainer, filepath=filepath)
 
         def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
             """Extend the on_fit_end method to ensure all uploads are completed."""
@@ -251,7 +278,7 @@ if _LIGHTNING_AVAILABLE:
         def _remove_checkpoint(self, trainer: "pl.Trainer", filepath: str) -> None:
             """Extend the remove checkpoint method to remove the model from the registry."""
             if trainer.is_global_zero:  # Only remove from the main process
-                self._remove_model(trainer, filepath)
+                self._remove_model(trainer=trainer, filepath=filepath)
 
 
 if _PYTORCHLIGHTNING_AVAILABLE:
@@ -260,15 +287,30 @@ if _PYTORCHLIGHTNING_AVAILABLE:
         """PyTorch Lightning ModelCheckpoint with LitModel support.
 
         Args:
-            model_name: Name of the model to upload in format 'organization/teamspace/modelname'
+            model_registry: Name of the model to upload in format 'organization/teamspace/modelname'.
+            clear_all_local: Whether to clear local models after uploading to the cloud.
             args: Additional arguments to pass to the parent class.
             kwargs: Additional keyword arguments to pass to the parent class.
         """
 
-        def __init__(self, *args: Any, model_name: Optional[str] = None, **kwargs: Any) -> None:
+        def __init__(
+            self,
+            *args: Any,
+            model_name: Optional[str] = None,
+            model_registry: Optional[str] = None,
+            clear_all_local: bool = False,
+            **kwargs: Any,
+        ) -> None:
             """Initialize the checkpoint with model name and other parameters."""
             _PytorchLightningModelCheckpoint.__init__(self, *args, **kwargs)
-            LitModelCheckpointMixin.__init__(self, model_name)
+            if model_name is not None:
+                rank_zero_warn(
+                    "The 'model_name' argument is deprecated and will be removed in a future version."
+                    " Please use 'model_registry' instead."
+                )
+            LitModelCheckpointMixin.__init__(
+                self, model_registry=model_registry or model_name, clear_all_local=clear_all_local
+            )
 
         def setup(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: str) -> None:
             """Setup the checkpoint callback."""
@@ -279,7 +321,7 @@ if _PYTORCHLIGHTNING_AVAILABLE:
             """Extend the save checkpoint method to upload the model."""
             _PytorchLightningModelCheckpoint._save_checkpoint(self, trainer, filepath)
             if trainer.is_global_zero:  # Only upload from the main process
-                self._upload_model(filepath)
+                self._upload_model(trainer=trainer, filepath=filepath)
 
         def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
             """Extend the on_fit_end method to ensure all uploads are completed."""
@@ -290,4 +332,4 @@ if _PYTORCHLIGHTNING_AVAILABLE:
         def _remove_checkpoint(self, trainer: "pl.Trainer", filepath: str) -> None:
             """Extend the remove checkpoint method to remove the model from the registry."""
             if trainer.is_global_zero:  # Only remove from the main process
-                self._remove_model(trainer, filepath)
+                self._remove_model(trainer=trainer, filepath=filepath)
