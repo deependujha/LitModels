@@ -43,7 +43,7 @@ jobs:
   #      requirements-file: "_requirements/_docs.txt"
 
   check-md-links:
-    uses: Lightning-AI/utilities/.github/workflows/check-md-links.yml@86fe1b20b4609835ba9e8c8739cd39707ba76868 # v0.15.3
+    uses: deependujha/utilities/tree/patch-1/.github/workflows/check-md-links.yml
     with:
       config-file: ".github/markdown-links-config.json"
       base-branch: "main"
